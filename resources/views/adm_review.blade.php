@@ -8,49 +8,45 @@
 
         </div>
         <div class="table-responsive mt-3">
-            <table class="table table-striped  table-bordered table-centered mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>User Id</th>
-                        <th>Room Id</th>
-                        <th>Room Title</th>
-                        <th>User Name</th>
-                        <th>User Email</th>
-                        <th>Review</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>I had a wonderful stay at this Hotel! The rooms were clean, spacious, and well-maintained. The management was friendly and always ready to assist. The food quality was great, and the environment was peaceful. Highly recommended for travelers!</td>
-                        <td>approved</td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>I had a wonderful stay at this Hotel! The rooms were clean, spacious, and well-maintained. The management was friendly and always ready to assist. The food quality was great, and the environment was peaceful. Highly recommended for travelers!</td>
-                        <td>approved</td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>I had a wonderful stay at this Hotel! The rooms were clean, spacious, and well-maintained. The management was friendly and always ready to assist. The food quality was great, and the environment was peaceful. Highly recommended for travelers!</td>
-                        <td>approved</td>
-                    </tr>
-                    
-                </tbody>
-            </table>
+            <table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>User</th>
+            <th>Review</th>
+            <th>Rating</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($reviews as $review)
+            <tr>
+                <td>{{ $review->id }}</td>
+                <td>{{ $review->product->name ?? 'N/A' }}</td>
+                <td>{{ $review->email }}</td>
+                <td>{{ $review->review }}</td>
+                <td>{{ $review->rating }}</td>
+                <td>
+                    @if($review->approved)
+                        <span class="badge bg-success">Approved</span>
+                    @else
+                        <span class="badge bg-danger">Disapproved</span>
+                    @endif
+                </td>
+                <td>
+                    @if(!$review->approved)
+                        <a href="{{ route('reviews.approve', $review->id) }}" class="btn btn-success btn-sm">Approve</a>
+                    @else
+                        <a href="{{ route('reviews.disapprove', $review->id) }}" class="btn btn-danger btn-sm">Disapprove</a>
+                    @endif
+                </td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
         </div>
     </div>
 

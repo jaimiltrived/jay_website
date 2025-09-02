@@ -9,13 +9,22 @@ class product extends Model
 {
     use HasFactory;
     protected $table = 'product';
-   protected $fillable = [
-    'product_name',
-    'capacity',
-    'type',
-    'new_price',
-    'status',
-    'discription',
-    'product_image',
-];
+    protected $fillable = [
+        'product_name',
+        'capacity',
+        'type',
+        'new_price',
+        'occupancy_status',
+        'discription',
+        'product_image',
+    ];
+
+    protected $casts = [
+        'product_image' => 'array',
+    ];
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 }

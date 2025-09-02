@@ -1,8 +1,5 @@
 @extends('master')
 @section('nav')
-    <!DOCTYPE html>
-    <html lang="en">
-
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -158,7 +155,7 @@
                         @foreach($services as $service)
                             <div class="col-md-4">
                                 <div class="ap-service-item set-bg"
-                                    style="background-image: url('{{ asset('img/banner/' . $service->image) }}');">
+                                    style="background-image: url('{{ asset("storage/services/{$service->image}") }}');">
                                     <div class="api-text">
                                         <h3>{{ $service->title }}</h3>
                                     </div>
@@ -173,7 +170,7 @@
         <!-- About Us Page Section End -->
 
 
-        <section class="aboutus-section spad" style="margin-top:3%">
+        <section class="aboutus-section spad" style = "margin-top:3%">
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-lg-6 col-md-12 mb-4 mb-lg-0">
@@ -222,7 +219,7 @@
 
 
         <section class="video-section set-bg"
-            style="background-image: url('{{ asset('img/' . $videoSection->background_image) }}')">
+            style="background-image: url('{{ asset("storage/backgrounds/{$videoSection->background_image}") }}')">
             <div class="container">
                 <div class="row">
                     <div class="col-lg-12">
@@ -235,11 +232,8 @@
             </div>
         </section>
 
-    </body>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    </body>     
     </html>
-
-
 @endsection

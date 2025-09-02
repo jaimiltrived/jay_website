@@ -305,13 +305,29 @@
 						</div>
 						<div class="row g-4">
 							@foreach($row as $item)
+								@php
+									$images = [];
+									if (!empty($item->product_image)) {
+										if (is_array($item->product_image)) {
+											$images = $item->product_image;
+										} else {
+											$decoded = json_decode($item->product_image, true);
+											if (is_array($decoded)) {
+												$images = $decoded;
+											} else {
+												$images[] = $item->product_image;
+											}
+										}
+									}
+									$imgSrc = isset($images[0]) && $images[0] ? asset('storage/' . $images[0]) : asset('img/room/default.jpg');
+								@endphp
 								<div class="col-lg-4 col-md-6 col-sm-12 d-flex">
 									<div class="card-group w-100">
 										<div class="card w-100">
 											<a href="{{route('product_details', $item->id)}}">
-												<img src="{{URL::to('/')}}/img/room/{{$item->product_image}}"
+												<img src="{{ $imgSrc }}"
 													class="img-fluid card-img-top" style="height:220px; object-fit:cover;"
-													alt="" />
+													alt="Room Image" />
 											</a>
 											<div class="product-content text-center p-3" style="background-color: #ffffff3d;">
 												<a href="{{route('product_details', $item->id)}}">

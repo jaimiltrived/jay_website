@@ -1,12 +1,6 @@
 @extends('adm_masterview')
 @section('sidebar')
 
-
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between pt-5">
-            <button type="button" class="btn btn-primary">Room Booking List</button>
-
-        </div>
         <div class="table-responsive mt-3">
             <table class="table table-striped  table-bordered table-centered mb-0">
                 <thead class="table-dark">
@@ -22,67 +16,23 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>20/7/2025</td>
-                        <td>22/7/2025</td>
-                        <td>2 Nights</td>
-                        <td>approved</td>
-                    </tr>
-                   <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>20/7/2025</td>
-                        <td>22/7/2025</td>
-                        <td>2 Nights</td>
-                        <td>approved</td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>20/7/2025</td>
-                        <td>22/7/2025</td>
-                        <td>2 Nights</td>
-                        <td>approved</td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>20/7/2025</td>
-                        <td>22/7/2025</td>
-                        <td>2 Nights</td>
-                        <td>approved</td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>5</td>
-                        <td>Cozy Single Room with Balcony</td>
-                        <td>John Doe</td>
-                        <td>john.doe@example.com</td>
-                        <td>20/7/2025</td>
-                        <td>22/7/2025</td>
-                        <td>2 Nights</td>
-                        <td>approved</td>
-                    </tr>
-
-                </tbody>
-            </table>
-        </div>
-    </div>
-
+               <tbody>
+    @foreach($bookings as $booking)
+        <tr>
+            <td>{{ $booking->user_id }}</td>
+            <td>{{ $booking->room_id }}</td>
+            <td>{{ $booking->room->title ?? 'N/A' }}</td>
+            <td>{{ $booking->user->name ?? 'N/A' }}</td>
+            <td>{{ $booking->user->email ?? 'N/A' }}</td>
+            <td>{{ \Carbon\Carbon::parse($booking->check_in_date)->format('d/m/Y') }}</td>
+            <td>{{ \Carbon\Carbon::parse($booking->check_out_date)->format('d/m/Y') }}</td>
+            <td>
+                {{ \Carbon\Carbon::parse($booking->check_in_date)
+                    ->diffInDays(\Carbon\Carbon::parse($booking->check_out_date)) }} Nights
+            </td>
+            <td>{{ $booking->status ?? 'pending' }}</td>
+        </tr>
+    @endforeach
+</tbody>
 
 @endsection

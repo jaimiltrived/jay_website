@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Mail\ContactMail;
 use App\Models\Contact;
+use FFI\Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\registration;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use App\Models\product;
 use App\Models\image;
 use App\Models\cart;
@@ -28,8 +29,8 @@ use App\Models\AboutServies;
 use App\Models\VideoSection;
 use Razorpay\Api\Api;
 use Illuminate\Validation\Rule;
-use App\Http\Controllers\Storage;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class jwellry extends Controller
 {
@@ -256,8 +257,8 @@ class jwellry extends Controller
             $row->address = $data->input('user_address');
 
             if ($data->hasFile('profile_picture')) {
-                if ($row->profile_picture && \Storage::exists('public/profile_pictures/' . $row->profile_picture)) {
-                    \Storage::delete('public/profile_pictures/' . $row->profile_picture);
+                if ($row->profile_picture && \Illuminate\Support\Facades\Storage::exists('public/profile_pictures/' . $row->profile_picture)) {
+                    \Illuminate\Support\Facades\Storage::delete('public/profile_pictures/' . $row->profile_picture);
                 }
                 $filename = time() . '.' . $data->file('profile_picture')->extension();
                 $data->file('profile_picture')->storeAs('public/profile_pictures', $filename);
@@ -347,22 +348,67 @@ class jwellry extends Controller
         session(['reset_password_email' => $request->email]);
 
         $otp = rand(100000, 999999);
+    }
 
-        Token::updateOrCreate(
-            ['email' => $request->email],
-            [
-                'token' => bin2hex(random_bytes(16)),
-                'otp' => $otp,
-                's_time' => \Carbon\Carbon::now()
-            ]
-        );
+    public function storeRoom(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:1',
+            'type' => 'required|in:single,double',
+            'price' => 'required|numeric|min:0',
+            'status' => 'required|in:Available,Occupied,Maintenance',
+            'description' => 'required|string',
+            'images' => 'required|array|min:5|max:5',
+            'images.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-        Mail::to($request->email)->send(new OtpMail($otp));
+        try {
+            // Start transaction
+            DB::beginTransaction();
 
-        // Dispatch the DeleteOtp job to delete the OTP after 5 minutes
-        \App\Jobs\DeleteOtp::dispatch($request->email)->delay(now()->addMinutes(5));
+            // Create the room record
+            $room = Product::create([
+                'product_name' => $request->name,
+                'type' => $request->type,
+                'new_price' => $request->price,
+                'capacity' => $request->capacity,
+                'occupancy_status' => $request->status,
+                'description' => $request->description,
+            ]);
 
-        return redirect()->route('otp.verify');
+            // Handle image uploads
+            $imageUrls = [];
+            foreach ($request->file('images') as $image) {
+                $filename = time() . '_' . rand(1000, 9999) . '.' . $image->getClientOriginalExtension();
+                
+                // Store the image
+                $image->storeAs('public/room_images', $filename);
+                $imageUrls[] = 'room_images/' . $filename;
+            }
+
+            // Update the room record with image paths
+            $room->update([
+                'images' => json_encode($imageUrls)
+            ]);
+
+            // Commit transaction
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Room added successfully!');
+
+        } catch (\Exception $e) {
+            // Rollback transaction
+            DB::rollBack();
+            
+            // Delete any uploaded images
+            foreach ($imageUrls ?? [] as $imageUrl) {
+                Storage::delete('public/' . $imageUrl);
+            }
+
+            Log::error('Room creation failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to add room. Please try again.');
+        }
     }
 
 
@@ -466,12 +512,19 @@ class jwellry extends Controller
 
 
     public function productdetails($id)
-    {
-        $a = services::all();
-        $row = product::all();
-        $data = product::find($id);
-        return view('productdetails', compact('data', 'row', 'a'));
-    }
+{
+    $a = services::all();
+    $row = product::all();
+    $data = product::find($id);
+
+    // Fetch reviews for this product
+    $reviews = Review::where('product_id', $id)
+        ->where('approved', true)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return view('productdetails', compact('data', 'row', 'a', 'reviews'));
+}
 
     public function adm_index()
     {
@@ -503,9 +556,32 @@ class jwellry extends Controller
     }
 
     public function adm_review()
-    {
-        return view('adm_review');
-    }
+{
+    // Fetch reviews with related user & product/room
+    $reviews = Review::with(['user', 'product'])->get();
+
+    return view('adm_review', compact('reviews'));
+}
+
+public function approve($id)
+{
+    $review = Review::findOrFail($id);
+    $review->approved = 1;
+    $review->save();
+
+    return redirect()->back()->with('success', 'Review approved successfully!');
+}
+
+public function disapprove($id)
+{
+    $review = Review::findOrFail($id);
+    $review->approved = 0;
+    $review->save();
+
+    return redirect()->back()->with('success', 'Review disapproved successfully!');
+}
+
+
 
     public function form_rev()
     {
@@ -577,38 +653,86 @@ class jwellry extends Controller
 
     public function add_room_form(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'capacity' => 'required',
-            'type' => 'required',
-            'price' => 'required',
-            'status' => ['required', Rule::in(['Available', 'Occupied', 'Maintenance'])],
-            'description' => 'required',
-            'image' => 'required|mimes:png,jpg,jpeg',
-        ]);
+        try {
+            // Validate basic fields first
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'capacity' => 'required|integer|min:1',
+                'type' => 'required|in:single,double',
+                'price' => 'required|numeric|min:0',
+                'status' => ['required', Rule::in(['Available', 'Occupied', 'Maintenance'])],
+                'description' => 'required|string',
+                'images' => 'required|array',
+                'images.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
 
+            // Process images
+            $imagePaths = [];
+            $uploadedFiles = $request->file('images');
+            
+            if (!is_array($uploadedFiles) || count($uploadedFiles) === 0) {
+                throw new \Exception('Please upload at least one image.');
+            }
 
-        $imagePath = $request->file('image')->store('rooms', 'public');
+            foreach ($uploadedFiles as $index => $file) {
+                if (!$file || !$file->isValid()) {
+                    continue;
+                }
 
+                // Create unique filename
+                $fileName = $index . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                
+                // Store the file
+                $path = $file->storeAs('rooms', $fileName, 'public');
+                if ($path) {
+                    $imagePaths[] = $path;
+                }
+            }
 
-        $product = Product::create([
-            'product_name' => $request->name,
-            'capacity' => $request->capacity,
-            'type' => $request->type,
-            'new_price' => $request->price,
-            'occupancy_status' => $request->status,
-            'discription' => $request->description,
-            'product_image' => $imagePath,
-        ]);
+            if (count($imagePaths) === 0) {
+                throw new \Exception('Failed to upload any images. Please try again.');
+            }
 
+            // Create the product with validated data
+            $product = product::create([
+                'product_name' => $request->name,
+                'capacity' => $request->capacity,
+                'type' => $request->type,
+                'new_price' => $request->price,
+                'occupancy_status' => $request->status,
+                'discription' => $request->description,
+                'product_image' => $imagePaths // Will be automatically JSON encoded
+            ]);
 
-        return redirect()->route('show_adm_product')->with('success', 'Room added successfully.');
+            if (!$product) {
+                throw new \Exception('Failed to create room record.');
+            }
+
+            return redirect()->route('show_adm_product')
+                ->with('success', 'Room added successfully with ' . count($imagePaths) . ' images.');
+
+        } catch (\Exception $e) {
+            // Clean up any uploaded images
+            if (!empty($imagePaths)) {
+                foreach ($imagePaths as $path) {
+                    $fullPath = 'public/' . $path;
+                    if (Storage::exists($fullPath)) {
+                        Storage::delete($fullPath);
+                    }
+                }
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to add room. Please try again.');
+        }
     }
 
     public function show_update_room_form($id)
     {
-        $room = Product::findOrFail($id);
-        return view('edit_product', compact('room'));
+        $room = product::findOrFail($id);
+        $images = $room->product_image ?: []; // Get images array directly thanks to the cast
+        return view('edit_product', compact('room', 'images'));
     }
 
 
@@ -630,12 +754,11 @@ class jwellry extends Controller
             'price' => 'required|numeric|min:0',
             'status' => 'required|string|in:Available,Occupied,Maintenance',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            'images' => 'nullable|array|max:5',
+            'images.*' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
-
         $room = product::findOrFail($id);
-
 
         $room->product_name = $request->name;
         $room->capacity = $request->capacity;
@@ -644,19 +767,13 @@ class jwellry extends Controller
         $room->occupancy_status = $request->status;
         $room->discription = $request->description;
 
-
-        if ($request->hasFile('image')) {
-
-            if ($room->image && \Storage::exists("public/rooms/{$room->image}")) {
-                \Storage::delete("public/rooms/{$room->image}");
+        // Handle new images
+        if ($request->hasFile('images')) {
+            $imagePaths = [];
+            foreach ($request->file('images') as $file) {
+                $imagePaths[] = $file->store('rooms', 'public');
             }
-
-
-            $filename = time() . '.' . $request->image->extension();
-            $request->image->storeAs('public/rooms', $filename);
-
-
-            $room->image = $filename;
+            $room->product_image = json_encode($imagePaths); // store as JSON
         }
 
         $room->save();
@@ -956,9 +1073,12 @@ class jwellry extends Controller
 
 
     public function adm_show_booking()
-    {
-        return view('room_booking');
-    }
+{
+    // fetch all bookings with user & room details
+    $bookings = Booking::with(['user', 'room'])->get();
+
+    return view('room_booking', compact('bookings'));
+}
 
     public function show_payment()
     {
@@ -1059,16 +1179,39 @@ class jwellry extends Controller
         ]);
 
         Review::create([
-            'product_id' => $id,
-            'email' => $request->email,
-            'rating' => $request->rating,
-            'review' => $request->review,
-        ]);
+        'product_id' => $id,
+        'email'      => $request->email,
+        'rating'     => $request->rating,
+        'review'     => $request->review,
+        'user_id'    => Auth::id(),
+        'approved'   => 0 // 👈 insert default value here
+    ]);
 
-        return redirect()->back()->with('success', 'Review submitted!');
+
+        return redirect()->route('product.show', $id)
+                     ->with('success', 'Review added successfully!');
+    }
+
+ public function show($id)
+    {
+        // Get the main product data
+        $data = Product::findOrFail($id);
+        
+        // Get related images (assuming this is for image gallery)
+        $row = Product::where('product_name', $data->product_name)->get();
+        
+        // Get reviews for this specific product
+        $reviews = Review::where('product_id', $id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+        
+        // Pass all data to the view
+        return view('productdetails', compact('data', 'row', 'reviews'));
+        // Replace 'product.details' with your actual view name
     }
 
 
+ 
     public function adm_banner_list()
     {
         $banners = Slider::all();
@@ -1129,8 +1272,8 @@ class jwellry extends Controller
         $banner = slider::findOrFail($id);
 
 
-        if ($banner->slider_image && \Storage::exists("public/banners/{$banner->slider_image}")) {
-            \Storage::delete("public/banners/{$banner->slider_image}");
+        if ($banner->slider_image &&Storage::exists("public/banners/{$banner->slider_image}")) {
+            Storage::delete("public/banners/{$banner->slider_image}");
         }
 
         $originalName = pathinfo($request->banner_image->getClientOriginalName(), PATHINFO_FILENAME);
@@ -1215,8 +1358,8 @@ class jwellry extends Controller
 
         if ($request->hasFile('image')) {
 
-            if ($blog->image && \Storage::exists("public/blogs/{$blog->image}")) {
-                \Storage::delete("public/blogs/{$blog->image}");
+            if ($blog->image && Storage::exists("public/blogs/{$blog->image}")) {
+                Storage::delete("public/blogs/{$blog->image}");
             }
 
             $originalName = pathinfo($request->image->getClientOriginalName(), PATHINFO_FILENAME);
@@ -1524,6 +1667,8 @@ class jwellry extends Controller
         return redirect()->route('show_about_section')->with('success', 'Hotel service updated successfully.');
     }
 
+     
+       
 }
 
 

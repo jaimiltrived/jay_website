@@ -88,11 +88,37 @@
                             @error('description') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>
 
-                        <!-- Room Image -->
+                        <!-- Room Images -->
                         <div class="col-12">
-                            <label for="roomImage" class="form-label fw-bold">Room Image</label>
-                            <input type="file" class="form-control" id="roomImage" name="image">
-                            @error('image') <small class="text-danger">{{ $message }}</small> @enderror
+                            <label class="form-label fw-bold">Room Images (5 Images)</label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="file" class="form-control" name="images[]" accept="image/*">
+                                    <small class="text-muted">Image 1 (Main)</small>
+                                    @error('images.0') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="file" class="form-control" name="images[]" accept="image/*">
+                                    <small class="text-muted">Image 2</small>
+                                    @error('images.1') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="file" class="form-control" name="images[]" accept="image/*">
+                                    <small class="text-muted">Image 3</small>
+                                    @error('images.2') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="file" class="form-control" name="images[]" accept="image/*">
+                                    <small class="text-muted">Image 4</small>
+                                    @error('images.3') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="file" class="form-control" name="images[]" accept="image/*">
+                                    <small class="text-muted">Image 5</small>
+                                    @error('images.4') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                            </div>
+                            @error('images') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>
 
                         <!-- Submit Button -->

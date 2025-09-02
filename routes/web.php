@@ -40,8 +40,11 @@ Route::get('form', [jwellry::class, 'form']);
 
 
 //room book
+Route::post('/rooms/store', [jwellry::class, 'storeRoom'])->name('rooms_store');
 Route::post('/book-room', [jwellry::class, 'booking'])->name('book.room');
 Route::get('/adm_booking', [jwellry::class, 'adm_show_booking']);
+Route::get('/product/{id}', [jwellry::class, 'show'])->name('product.show');
+
 
 
 //razorpay
@@ -152,4 +155,7 @@ Route::get('adm_add_background_image', [jwellry::class, 'adm_show_add_background
 Route::post('add_background_image', [jwellry::class, 'adm_add_background_image'])->name('add_new_background_image');
 Route::get('adm_edit_background_image/{id}', [jwellry::class, 'adm_show_edit_background_image'])->name('adm_edit_background_image_show_form');
 Route::post('background_image/{id}', [jwellry::class, 'adm_edit_background_image'])->name('edit_background_image');
+
+Route::get('/reviews/{id}/approve', [jwellry::class, 'approve'])->name('reviews.approve');
+Route::get('/reviews/{id}/disapprove', [jwellry::class, 'disapprove'])->name('reviews.disapprove');
 

@@ -133,8 +133,25 @@
                     @forelse($products as $product)
                         <div class="col-lg-4 col-md-6">
                             <div class="room-item">
+                                @php
+                                    $productImage = '';
+                                    if (is_array($product->product_image)) {
+                                        $productImage = $product->product_image[0] ?? '';
+                                    } else {
+                                        if (is_string($product->product_image)) {
+                                            $decoded = json_decode($product->product_image, true);
+                                            if (is_array($decoded)) {
+                                                $productImage = $decoded[0] ?? $product->product_image;
+                                            } else {
+                                                $productImage = $product->product_image;
+                                            }
+                                        } else {
+                                            $productImage = $product->product_image;
+                                        }
+                                    }
+                                @endphp
                                 <a href="{{ route('product_details', $product->id) }}">
-                                    <img src="{{ URL::to('/') }}/img/room/{{ $product->product_image }}" class="card-img-top"
+                                    <img src="{{ asset("storage/hotel_images/" . $productImage) }}" class="card-img-top"
                                         style="height:317px; width:416px;" alt="{{ $product->product_name }}" />
                                 </a>
                                 <div class="ri-text">
